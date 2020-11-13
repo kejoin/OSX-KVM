@@ -9,8 +9,6 @@ instructions are included!).
 :green_heart: Looking for **commercial** support with this stuff? I am [available
 over email](mailto:dhiru.kholia@gmail.com?subject=[GitHub]%20OSX-KVM%20Commercial%20Support%20Request&body=Hi%20-%20We%20are%20interested%20in%20purchasing%20commercial%20support%20options%20for%20your%20project.) for a chat for **commercial support options only**.
 
-Looking for `Big Sur` support? See these [notes](Big-Sur.md).
-
 Working with `Proxmox` and macOS? See [Nick's blog for sure](https://www.nicksherlock.com/).
 
 Yes, we support offline macOS installations now 🎉
@@ -59,7 +57,7 @@ help (pull-requests!) with the following work items:
 
 * QEMU >= 4.2.0
 
-* A CPU with Intel VT-x / AMD SVM support is required
+* A CPU with Intel VT-x / AMD SVM support is required (`egrep '(vmx|svm)' /proc/cpuinfo`)
 
 * A CPU with SSE4.1 support is required for >= macOS Sierra
 
@@ -74,19 +72,20 @@ Phenom II X3 720 does not. Ryzen processors work just fine.
 * KVM may need the following tweak on the host machine to work.
 
   ```
-  $ echo 1 | sudo tee /sys/module/kvm/parameters/ignore_msrs
+  echo 1 | sudo tee /sys/module/kvm/parameters/ignore_msrs
   ```
 
   To make this change permanent, you may use the following command.
 
   ```
-  $ sudo cp kvm.conf /etc/modprobe.d/kvm.conf
+  sudo cp kvm.conf /etc/modprobe.d/kvm.conf  # for intel boxes
   ```
 
 * Install QEMU and other packages.
 
   ```
-  sudo apt-get install qemu uml-utilities virt-manager git wget libguestfs-tools -y
+  sudo apt-get install qemu uml-utilities virt-manager git \
+      wget libguestfs-tools p7zip-full -y
   ```
 
   This step may need to be adapted for your Linux distribution.
@@ -109,7 +108,8 @@ Phenom II X3 720 does not. Ryzen processors work just fine.
   ```
 
   You can choose your desired macOS version here. After executing this step,
-  you should have the `BaseSystem.dmg` file in the current folder.
+  you should have the `BaseSystem.dmg` file in the current folder. ATTENTION:
+  Jump to the next step if you have downloaded `macOS Big Sur`.
 
   Sample run:
 
@@ -127,14 +127,52 @@ Phenom II X3 720 does not. Ryzen processors work just fine.
    9    001-36735    10.15.6  2020-08-06  macOS Catalina
   10    001-36801    10.15.6  2020-08-12  macOS Catalina
   11    001-51042    10.15.7  2020-09-24  macOS Catalina
+  12    001-57224    10.15.7  2020-10-27  macOS Catalina
+  13    001-68446    10.15.7  2020-11-11  macOS Catalina
+  14    001-79699     11.0.1  2020-11-12  macOS Big Sur
 
-  Choose a product to download (1-11): 11
+  Choose a product to download (1-14): 14
   ```
 
-  Attention: Modern NVIDIA GPUs are supported on HighSierra but not on later
-  versions (yet).
+  Note: Modern NVIDIA GPUs are supported on HighSierra but not on later
+  versions.
 
-  Next, convert this file into a usable format.
+* Special steps **for `macOS Big Sur` only.**
+
+  - Unpack the download InstallAssistant.pkg file:
+
+    ```
+    7z e -txar InstallAssistant.pkg '*.dmg'  # extract files
+    ```
+
+    At the end of this step, we get the `SharedSupport.dmg` file.
+
+  - Extract `BaseSystem.dmg` from this `SharedSupport.dmg` file:
+
+    ```
+    7z e -tdmg SharedSupport.dmg 5.hfs  # extract support dmg
+
+    mkdir stuff
+    sudo mount -oloop *.hfs stuff  # mount the hfs filesystem
+
+    7z l stuff/com_apple_MobileAsset_MacSoftwareUpdate/*.zip  # list files from this zip file
+    ...
+    2020-11-06 18:57:48 .....    652236311    646767350  AssetData/Restore/BaseSystem.md
+    ```
+
+    There is the required `BaseSystem.dmg` file. To unzip it, first make sure you
+    are in the base directory for `OSX-KVM` and then extract the `BaseSystem.dmg`
+    file.
+
+    ```
+    cd ~/OSX-KVM/
+
+    7z e stuff/*MacSoftwareUpdate/*.zip AssetData/Restore/Base*.dmg
+
+    sudo umount stuff
+    ```
+
+* Convert the downloaded (or the extracted) `BaseSystem.dmg` file into the `BaseSystem.img` file.
 
   ```
   qemu-img convert BaseSystem.dmg -O raw BaseSystem.img
@@ -156,7 +194,7 @@ Phenom II X3 720 does not. Ryzen processors work just fine.
 ### Installation
 
 - CLI method (primary). Just run the `OpenCore-Boot.sh` script to start the
-  installation proces.
+  installation process.
 
   ```
   ./OpenCore-Boot.sh
@@ -205,8 +243,6 @@ look at our [notes](notes.md). We would like to resume our testing and
 documentation work around this area. Please [reach out to us](mailto:dhiru.kholia@gmail.com?subject=[GitHub]%20OSX-KVM%20Funding%20Support)
 if you are able to fund this area of work.
 
-Specifically, we are looking for an AMD RX 560/570 GPU for testing purposes.
-
 It is possible to have 'beyond-native-apple-hw' performance but it does require
 work, patience, and a bit of luck (perhaps?).
 
@@ -243,6 +279,8 @@ work, patience, and a bit of luck (perhaps?).
 
 The "secret" Apple OSK string is widely available on the Internet. It is also included in a public court document [available here](http://www.rcfp.org/sites/default/files/docs/20120105_202426_apple_sealing.pdf). I am not a lawyer but it seems that Apple's attempt(s) to get the OSK string treated as a trade secret did not work out. Due to these reasons, the OSK string is freely included in this repository.
 
+Please review the ['Legality of Hackintoshing' documentation bits from Dortania's OpenCore Install Guide](https://dortania.github.io/OpenCore-Install-Guide/why-oc.html#legality-of-hackintoshing).
+
 Gabriel Somlo also has [some thoughts](http://www.contrib.andrew.cmu.edu/~somlo/OSXKVM/) on the legal aspects involved in running macOS under QEMU/KVM.
 
 
@@ -263,4 +301,4 @@ software). Also, a long time back, I had to completely wipe my (then) brand new
 `MacBook Pro (Retina, 15-inch, Late 2013)` and install Xubuntu on it - as the
 `OS X` kernel kept crashing on it!
 
-Backstory: I was a (poor) student in Canada once and Apple made [my work on cracking Apple Keychains](https://github.com/openwall/john/blob/bleeding-jumbo/src/keychain_fmt_plug.c) a lot harder than it needed to be.
+Backstory: I was a (poor) student in Canada once and Apple made [my work on cracking Apple Keychains](https://github.com/openwall/john/blob/bleeding-jumbo/src/keychain_fmt_plug.c) a lot harder than it needed to be. This is how I got interested in Hackintosh systems.
